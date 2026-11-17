@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Eye } from 'lucide-react'
 import CropEditor from './CropEditor.jsx'
 import Skeleton from '../../components/Skeleton.jsx'
@@ -11,6 +11,14 @@ export default function ImageStage({ detection, prepare }) {
   const [tab, setTab] = useState('crop')
   const base = useId()
   const hasChanges = Boolean(prepare.crop) || prepare.steps.length > 0
+
+  // Adding a filter jumps to the preview so its effect is visible straight away.
+  const stepCount = prepare.steps.length
+  const prevCount = useRef(stepCount)
+  useEffect(() => {
+    if (stepCount > prevCount.current) setTab('preview')
+    prevCount.current = stepCount
+  }, [stepCount])
 
   async function runPreview() {
     setTab('preview')
@@ -35,9 +43,9 @@ export default function ImageStage({ detection, prepare }) {
 
       <div className="preview-actions">
         <button type="button" className="btn btn--secondary" onClick={runPreview} disabled={!file || preview.phase === 'loading'}>
-          <Eye size={16} aria-hidden="true" /> {preview.phase === 'ready' ? 'Refresh preview' : 'Preview result'}
+          <Eye size={16} aria-hidden="true" /> {preview.image ? 'Refresh preview' : 'Preview result'}
         </button>
-        {!hasChanges && <span className="muted">No crop or filters yet; the preview equals the original.</span>}
+        <span className="muted">{hasChanges ? 'Preview updates live as you change filters or the crop.' : 'No crop or filters yet; the preview equals the original.'}</span>
       </div>
 
       <div role="tabpanel" id={`${base}-crop-panel`} aria-labelledby={`${base}-crop`} hidden={tab !== 'crop'}>
@@ -55,12 +63,17 @@ export default function ImageStage({ detection, prepare }) {
             <figcaption className="card__title">
               Processed {preview.info && <span className="muted">{preview.info.width} x {preview.info.height} px</span>}
             </figcaption>
-            {preview.phase === 'loading' && <Skeleton width="100%" aspect={aspect} />}
-            {preview.phase === 'ready' && <img src={preview.image} alt="Processed image preview" />}
-            {(preview.phase === 'idle' || preview.phase === 'error') && (
-              <div className="placeholder" style={{ aspectRatio: aspect }}>Select Preview result to see the processed image.</div>
+            {preview.image ? (
+              <div className={`live-img${preview.phase === 'loading' ? ' live-img--updating' : ''}`}>
+                <img src={preview.image} alt="Processed image preview" />
+                {preview.phase === 'loading' && <span className="live-img__badge" role="status">Updating preview</span>}
+              </div>
+            ) : preview.phase === 'loading' ? (
+              <Skeleton width="100%" aspect={aspect} />
+            ) : (
+              <div className="placeholder" style={{ aspectRatio: aspect }}>Add a filter or draw a crop and the processed image appears here live.</div>
             )}
-            {preview.phase === 'ready' && preview.info.preprocessing.steps.length > 0 && (
+            {preview.info && preview.info.preprocessing.steps.length > 0 && (
               <ul className="engine-list" aria-label="Engine used per step">
                 {preview.info.preprocessing.steps.map((s, i) => (
                   <li key={i}><span>{i + 1}. {s.label}</span><EngineBadge engine={s.engine} fallback={s.fallback} /><span className="muted">{Math.round(s.duration_ms)} ms</span></li>

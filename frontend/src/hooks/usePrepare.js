@@ -41,7 +41,8 @@ export function usePrepare(file, healthState) {
     setPreview({ phase: 'idle', image: null, info: null, error: null })
   }, [file])
 
-  const invalidate = useCallback(() => setPreview((p) => (p.phase === 'idle' ? p : { phase: 'idle', image: null, info: null, error: null })), [])
+  // Changes no longer clear the preview: the live-preview effect below re-renders it.
+  const invalidate = useCallback(() => {}, [])
 
   const makeStep = useCallback(
     (id, overrides = {}) => {
@@ -105,7 +106,7 @@ export function usePrepare(file, healthState) {
         abortRef.current?.abort()
         abortRef.current = controller
       }
-      if (track) setPreview({ phase: 'loading', image: null, info: null, error: null })
+      if (track) setPreview((p) => ({ ...p, phase: 'loading', error: null })) // keep the previous image while updating
       try {
         const res = await previewFilters(file, { ...options, steps: [...steps, ...extraSteps] }, controller.signal)
         if (controller.signal.aborted) return null
@@ -120,6 +121,19 @@ export function usePrepare(file, healthState) {
     },
     [file, options, steps],
   )
+
+  // Live preview: re-run shortly after any change to the crop or filter chain.
+  useEffect(() => {
+    if (!file) return undefined
+    if (!steps.length && !crop) {
+      abortRef.current?.abort()
+      setPreview({ phase: 'idle', image: null, info: null, error: null })
+      return undefined
+    }
+    if (needsReference && !reference) return undefined
+    const timer = setTimeout(() => { run().catch(() => {}) }, 350)
+    return () => clearTimeout(timer)
+  }, [run, file, steps, crop, needsReference, reference])
 
   return {
     catalog, byId, steps, crop, engine, reference, preview, needsReference, options,

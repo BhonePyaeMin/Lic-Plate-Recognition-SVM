@@ -166,6 +166,21 @@ describe('prepare stage', () => {
     expect(calls(fetchMock, '/api/v1/detect')).toHaveLength(0) // preview never runs detection
   })
 
+  it('updates the preview live when a filter is added, without pressing Preview', async () => {
+    const fetchMock = setup()
+    const user = userEvent.setup()
+    render(<App />)
+    await upload(user)
+    expect(calls(fetchMock, '/api/v1/filters/apply')).toHaveLength(0)
+    await addFilter(user, 'median')
+    expect(await screen.findByAltText('Processed image preview')).toBeInTheDocument()
+    expect(calls(fetchMock, '/api/v1/filters/apply')).toHaveLength(1)
+    fireEvent.change(screen.getByLabelText('Kernel size', { selector: 'input[type=number]' }), { target: { value: '9' } })
+    await waitFor(() => expect(calls(fetchMock, '/api/v1/filters/apply')).toHaveLength(2))
+    const sent = JSON.parse(calls(fetchMock, '/api/v1/filters/apply')[1][1].body.get('steps'))
+    expect(sent[0].params.kernel).toBe(9)
+  })
+
   it('compares edge detectors with one request per method', async () => {
     const fetchMock = setup()
     const user = userEvent.setup()

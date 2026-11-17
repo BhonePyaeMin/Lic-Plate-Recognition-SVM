@@ -79,3 +79,8 @@ input[type='range'] { width: 100%; accent-color: var(--accent); min-height: 1.5r
 /* header MATLAB note colours */
 .header__note--ready { color: var(--success); font-weight: 600; }
 .header__note--failed { color: var(--danger); }
+
+.live-img { position: relative; }
+.live-img img { width: 100%; border-radius: var(--radius-md); background: var(--surface-sunken); transition: opacity 0.15s; }
+.live-img--updating img { opacity: 0.55; }
+.live-img__badge { position: absolute; top: var(--space-2); left: var(--space-2); background: var(--accent); color: var(--accent-contrast); font-size: var(--text-xs); font-weight: 600; padding: 2px var(--space-2); border-radius: 999px; }
