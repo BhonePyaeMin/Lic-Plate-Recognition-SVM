@@ -372,4 +372,4 @@ Only process images you have permission to use.
 
 ## License
 
-Add the license chosen by your team before public distribution.
+MIT. See [LICENSE](LICENSE).
