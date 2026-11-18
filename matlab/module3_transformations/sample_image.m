@@ -1,9 +1,15 @@
 function out = sample_image(img, X, Y, method)
 %SAMPLE_IMAGE Sample IMG at fractional source coordinates (X = column, Y = row).
 %   out = sample_image(img, X, Y, 'nearest'|'bilinear'|'bicubic')
-%   X and Y are matrices of the output size. Coordinates outside the image
-%   give 0 (black). Pixel centres are at integer coordinates; (1,1) is the
-%   centre of the top-left pixel.
+%   X and Y are matrices of the output size. Pixel centres are at integer
+%   coordinates; (1,1) is the centre of the top-left pixel, so the image
+%   covers [0.5, W + 0.5] by [0.5, H + 0.5].
+%
+%   Border rule: a position inside the image area, including the outer half
+%   pixel (as happens at the edge when enlarging), takes the value of the
+%   nearest real pixel (replication). Only positions farther outside give 0
+%   (black). Earlier versions zeroed that outer half pixel and extrapolated
+%   there, which left a black frame around every enlarged image.
 %
 %   nearest  : value of the closest pixel (blocky, fastest).
 %   bilinear : weighted average of the 2x2 neighbourhood.
@@ -15,7 +21,9 @@ class0 = class(img);
 img = double(img);
 [H, W, C] = size(img);
 tol = 1e-6;   % absorb floating-point error on exact border coordinates
-inside = X >= 1 - tol & X <= W + tol & Y >= 1 - tol & Y <= H + tol;
+inside = X >= 0.5 - tol & X <= W + 0.5 + tol & Y >= 0.5 - tol & Y <= H + 0.5 + tol;
+X = min(max(X, 1), W);   % replicate the edge pixels into the outer half pixel
+Y = min(max(Y, 1), H);
 out = zeros([size(X), C]);
 
 for c = 1:C

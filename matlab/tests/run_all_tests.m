@@ -34,6 +34,9 @@ checks = {
     'morph dilate/erode match naive definitions',     @t_morph_exact
     'label_components 8- vs 4-connectivity',          @t_label
     'canny_edges hugs a rectangle outline',           @t_canny
+    'enlarging leaves no black frame (3 methods)',    @t_no_frame
+    'zoom_image keeps size and the centre pixel',     @t_zoom
+    'run_operation_file scale zoom-in mode',          @t_dispatcher_zoom
     'run_operation_file writes a result (mean)',      @t_dispatcher
     'run_operation_file rejects unknown ids',         @t_dispatcher_unknown
 };
@@ -292,4 +295,39 @@ G = zeros(80, 100);  G(25:55, 30:70) = 1;
 E = canny_edges(G, [0.1 0.3]);
 [r, c] = find(E);
 ok = nnz(E) > 100 && all(r >= 22 & r <= 58 & c >= 27 & c <= 73) && ~any(E(30:50, 35:65), 'all');
+end
+
+% ----- scaling, zoom and borders ---------------------------------------------
+function ok = t_no_frame()
+img = uint8(200 * ones(30, 50, 3));
+ok = true;
+for m = {'nearest', 'bilinear', 'bicubic'}
+    out = scale_image(img, 3.5, 3.5, m{1});
+    ok = ok && all(out(:) == 200);   % any 0 would be a black edge band
+end
+end
+
+function ok = t_zoom()
+[X, Y] = meshgrid(1:80, 1:60);
+img = uint8(mod(X + 2 * Y, 256));
+out = zoom_image(img, 3, 50, 50, 'bilinear');
+cx = 1 + 0.5 * 79;  cy = 1 + 0.5 * 59;     % the fixed point is between pixels, so compare its neighbourhood
+ok = isequal(size(out), size(img)) && abs(double(out(30, 40)) - double(img(30, 40))) <= 3 ...
+    && std(double(out(:))) > 0 && cx > 0 && cy > 0;
+big = zoom_image(img, 4, 50, 50, 'nearest');
+ok = ok && numel(unique(big(25:36, 35:46))) < numel(unique(img(25:36, 35:46)));   % 4x: fewer distinct values in a patch
+end
+
+function ok = t_dispatcher_zoom()
+tmpIn = [tempname '.png'];  tmpOut = [tempname '.png'];
+imwrite(test_image(), tmpIn);
+cleanup = onCleanup(@() cellfun(@(f) delete(f), {tmpIn, tmpOut}));
+params = '{"factor":3,"mode":"zoom-in","center_x":50,"center_y":50,"interpolation":"bicubic"}';
+run_operation_file(tmpIn, tmpOut, 'scale', params, '');
+a = imread(tmpIn);  b = imread(tmpOut);
+ok = isequal(size(a, 1), size(b, 1)) && isequal(size(a, 2), size(b, 2));        % zoom-in keeps the frame size
+params = '{"factor":3,"mode":"enlarge","center_x":50,"center_y":50,"interpolation":"bicubic"}';
+run_operation_file(tmpIn, tmpOut, 'scale', params, '');
+c = imread(tmpOut);
+ok = ok && size(c, 1) == 3 * size(a, 1) && size(c, 2) == 3 * size(a, 2);       % enlarge mode grows the picture
 end

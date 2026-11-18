@@ -43,6 +43,7 @@ ops(end+1) = op('Translate (forward mapping)', 3, P('Shift x', 40, 'Shift y', 20
 ops(end+1) = op('Scale (nearest)', 3, P('Factor', 2), @(i, p, r) scale_image(i, p(1), p(1), 'nearest'));
 ops(end+1) = op('Scale (bilinear)', 3, P('Factor', 2), @(i, p, r) scale_image(i, p(1), p(1), 'bilinear'));
 ops(end+1) = op('Scale (bicubic)', 3, P('Factor', 2), @(i, p, r) scale_image(i, p(1), p(1), 'bicubic'));
+ops(end+1) = op('Zoom in on a point (keeps frame size)', 3, P('Factor', 3, 'Centre x (%)', 50, 'Centre y (%)', 50), @(i, p, r) zoom_image(i, p(1), p(2), p(3), 'bicubic'));
 ops(end+1) = op('Rotate (bilinear)', 3, P('Angle (deg, CCW)', 15), @(i, p, r) rotate_image(i, p(1), 'bilinear', 'reverse', true));
 ops(end+1) = op('Rotate (forward mapping, shows holes)', 3, P('Angle (deg, CCW)', 15), @(i, p, r) rotate_image(i, p(1), 'nearest', 'forward'));
 ops(end+1) = op('Shear (horizontal)', 3, P('Shear', 0.2), @(i, p, r) shear_image(i, p(1)));

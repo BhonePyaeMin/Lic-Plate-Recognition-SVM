@@ -2,7 +2,7 @@
 
 Course modules implemented as plain MATLAB functions plus a GUI.
 
-**Status:** the module functions and `tests/run_all_tests.m` (27 checks) were run on MATLAB R2026a
+**Status:** the module functions and `tests/run_all_tests.m` (30 checks) were run on MATLAB R2026a
 and pass. The standalone GUI (`toolbox_gui/plate_toolbox_gui.m`) has **not** been run yet. No toolbox
 is required for the modules: `common/` holds base-MATLAB replacements for the Image Processing
 Toolbox functions that were used before (`im2uint8`, `mat2gray`, `imfilter`, `medfilt2`, `strel`,
@@ -58,3 +58,8 @@ plate_toolbox_gui        % opens the GUI
 
 The web app (Python, OpenCV, FastAPI) does not call this code by default. See
 `../docs/architecture.md` for the optional MATLAB Engine adapter and the two integration options.
+
+## Module 3 notes
+
+* `zoom_image(img, factor, centreX%, centreY%, method)` magnifies around a point and keeps the frame size (the web app's Scaling step has the same *zoom-in* mode).
+* `sample_image` replicates the edge pixels into the outer half pixel. Earlier versions zeroed that band, which left a black frame around every enlarged image and made the MATLAB engine about 3 dB worse than OpenCV on a 4x enlargement; both engines now agree.

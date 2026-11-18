@@ -52,3 +52,6 @@ Thumbs.db
 
 # Local run logs
 *.log
+
+# Third-party test photos (copyrighted by their authors; see samples/real/SOURCES.txt)
+samples/real/

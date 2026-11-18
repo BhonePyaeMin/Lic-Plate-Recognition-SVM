@@ -9,6 +9,7 @@ export default function ImageStage({ detection, prepare }) {
   const { previewUrl, dimensions, file } = detection
   const { preview } = prepare
   const [tab, setTab] = useState('crop')
+  const [view, setView] = useState('fit') // 'fit' shrinks both images to the panel; 'actual' shows real pixels so a zoom is visible
   const base = useId()
   const hasChanges = Boolean(prepare.crop) || prepare.steps.length > 0
 
@@ -26,6 +27,8 @@ export default function ImageStage({ detection, prepare }) {
   }
 
   const aspect = dimensions ? `${dimensions.width} / ${dimensions.height}` : '4 / 3'
+  const scaleRatio = dimensions && preview.info ? preview.info.width / dimensions.width : 1
+  const ratio = Math.abs(scaleRatio - 1) > 0.01 ? scaleRatio.toFixed(2) : null
 
   return (
     <section className="card stage" aria-labelledby={`${base}-title`}>
@@ -54,9 +57,16 @@ export default function ImageStage({ detection, prepare }) {
 
       <div role="tabpanel" id={`${base}-preview-panel`} aria-labelledby={`${base}-preview`} hidden={tab !== 'preview'} aria-busy={preview.phase === 'loading'}>
         {preview.phase === 'error' && <p className="inline-note" role="alert">{preview.error.message}</p>}
-        <div className="compare-pair">
+        <div className="view-switch" role="group" aria-label="Preview size">
+          <button type="button" className={`view-switch__btn${view === 'fit' ? ' is-on' : ''}`} aria-pressed={view === 'fit'} onClick={() => setView('fit')}>Fit to panel</button>
+          <button type="button" className={`view-switch__btn${view === 'actual' ? ' is-on' : ''}`} aria-pressed={view === 'actual'} onClick={() => setView('actual')}>Actual size (1:1)</button>
+          {ratio && <span className="muted">Processed is {ratio}x the original size{view === 'fit' ? ' (both are shrunk to fit here; choose Actual size to see it)' : ''}.</span>}
+        </div>
+        <div className={`compare-pair${view === 'actual' ? ' compare-pair--actual' : ''}`} data-testid="compare-pair">
           <figure>
-            <figcaption className="card__title">Original</figcaption>
+            <figcaption className="card__title">
+              Original {dimensions && <span className="muted">{dimensions.width} x {dimensions.height} px</span>}
+            </figcaption>
             <img src={previewUrl} alt="Original image" />
           </figure>
           <figure>

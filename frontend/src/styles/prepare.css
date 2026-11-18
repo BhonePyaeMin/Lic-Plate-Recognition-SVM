@@ -139,3 +139,19 @@ input[type='range'] { width: 100%; accent-color: var(--accent); min-height: 1.5r
 }
 .rail > :first-child:not(.live) { margin-top: var(--space-3); }
 .rail > :last-child:not(.detect-bar) { margin-bottom: var(--space-3); }
+
+/* ---------- Preview size switch and actual-size view ---------- */
+.view-switch { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.view-switch__btn { min-height: 2rem; padding: 0 var(--space-3); border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: var(--text-xs); font-weight: 600; cursor: pointer; }
+.view-switch__btn.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.compare-pair--actual { display: flex; gap: var(--space-4); overflow-x: auto; align-items: flex-start; padding-bottom: var(--space-2); }
+.compare-pair--actual figure { flex: none; }
+.compare-pair--actual img { width: auto; max-width: none; max-height: none; }
+
+/* ---------- Interpolation comparison ---------- */
+.compare__zoomrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); font-size: var(--text-sm); }
+.compare__zoomrow label { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; }
+.compare__zoomrow input { width: 4.5rem; }
+.compare__grid--wide { grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+.zoomwin { height: 15rem; overflow: hidden; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-sunken); }
+.zoomwin img { width: 100%; height: 100%; object-fit: none; border: 0; border-radius: 0; }

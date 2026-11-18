@@ -327,3 +327,75 @@ def test_detect_reports_matlab_used(make_client):
     scene, _ = make_scene()
     res = _post(client, "/api/v1/detect", scene, steps=json.dumps([{"id": "mean"}])).json()["result"]
     assert res["matlab_used"] is True and res["preprocessing"]["steps"][0]["engine"] == "matlab"
+
+
+# ------------------------------------------------------------ scaling and zoom
+def _gradient(h=60, w=80):
+    x, y = np.meshgrid(np.arange(w), np.arange(h))
+    return np.dstack([(x * 3) % 256, (y * 4) % 256, ((x + y) * 2) % 256]).astype(np.uint8)
+
+
+def _run_scale(img, **params):
+    op = CATALOG["scale"]
+    return op.run(img, resolve_params(op, params), None)
+
+
+def test_scale_default_mode_still_enlarges_the_picture():
+    img = _gradient()
+    assert _run_scale(img, factor=2.0).shape[:2] == (120, 160)
+
+
+def test_zoom_in_keeps_the_frame_size_and_magnifies():
+    img = _gradient()
+    out = _run_scale(img, factor=3.0, mode="zoom-in", interpolation="nearest")
+    assert out.shape == img.shape
+    # At 3x about the middle, a 10x10 patch of the output shows only ~3x3 distinct source pixels per axis.
+    patch = out[25:35, 35:45, 0]
+    assert len(np.unique(patch)) <= 5 and len(np.unique(img[25:35, 35:45, 0])) > 8
+
+
+def test_zoom_in_keeps_the_chosen_centre_fixed():
+    img = _gradient()
+    for cx, cy in ((0, 0), (100, 100), (25, 75)):
+        out = _run_scale(img, factor=4.0, mode="zoom-in", center_x=cx, center_y=cy, interpolation="bilinear")
+        x, y = round(cx / 100 * (img.shape[1] - 1)), round(cy / 100 * (img.shape[0] - 1))
+        assert np.abs(out[y, x].astype(int) - img[y, x].astype(int)).max() <= 6, (cx, cy)
+
+
+def test_zoom_factor_one_is_the_identity():
+    img = _gradient()
+    assert np.array_equal(_run_scale(img, factor=1.0, mode="zoom-in", interpolation="nearest"), img)
+
+
+def test_zoom_out_leaves_black_borders_but_no_error():
+    out = _run_scale(_gradient(), factor=0.5, mode="zoom-in")
+    assert out.shape[:2] == (60, 80) and (out[0, 0] == 0).all() and out[30, 40].any()
+
+
+@pytest.mark.parametrize("interp", ["nearest", "bilinear", "bicubic"])
+def test_enlarging_a_flat_picture_adds_no_dark_edge(interp):
+    flat = np.full((30, 50, 3), 200, np.uint8)
+    out = _run_scale(flat, factor=3.5, interpolation=interp)
+    assert (out == 200).all()
+
+
+def test_interpolation_methods_rank_by_quality_on_a_real_enlargement():
+    """Shrink a detailed picture 4x, enlarge it back: bicubic should be closest, nearest furthest."""
+    rng = np.random.default_rng(0)
+    detail = cv2.GaussianBlur(rng.integers(0, 255, (96, 128, 3), dtype=np.uint8), (0, 0), 1.5)
+    small = cv2.resize(detail, (32, 24), interpolation=cv2.INTER_AREA)
+    err = {i: np.mean((_run_scale(small, factor=4.0, interpolation=i).astype(float) - detail.astype(float)) ** 2) for i in ("nearest", "bilinear", "bicubic")}
+    assert err["bicubic"] <= err["bilinear"] <= err["nearest"]
+
+
+def test_catalog_describes_the_zoom_parameters():
+    params = {p["key"]: p for p in CATALOG["scale"].public()["params"]}
+    assert params["mode"]["options"] == ["enlarge", "zoom-in"] and params["mode"]["default"] == "enlarge"
+    assert params["center_x"]["default"] == 50 and params["center_y"]["max"] == 100
+
+
+@pytest.mark.parametrize("w,h,factor,expected", [(493, 740, 0.5, (247, 370)), (415, 738, 0.5, (208, 369)), (101, 51, 1.5, (152, 77)), (493, 740, 2.0, (986, 1480))])
+def test_scale_rounds_half_up_like_matlab(w, h, factor, expected):
+    """493 * 0.5 = 246.5 must give 247 (MATLAB's round), not 246 (Python's round-half-even)."""
+    out = _run_scale(np.zeros((h, w, 3), np.uint8), factor=factor)
+    assert (out.shape[1], out.shape[0]) == expected

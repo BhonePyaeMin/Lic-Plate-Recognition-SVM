@@ -16,14 +16,14 @@ and GUI required by the course brief.
 
 | Area | Status |
 |---|---|
-| FastAPI backend, upload validation, crop and filter API | Implemented, 150 automated tests pass |
+| FastAPI backend, upload validation, crop and filter API | Implemented, 164 automated tests pass |
 | 29 filters across Modules 1 to 3 (OpenCV/NumPy) | Implemented; each runs with defaults in tests |
 | OpenCV baseline detector | Implemented; verified on synthetic scenes only |
 | OCR (RapidOCR / ONNX Runtime) | Implemented; verified on synthetic scenes only |
 | SVM plate verification (HOG + linear SVM) | Implemented and trained on **synthetic scenes only**; see [SVM plate verification](#svm-plate-verification) |
 | SVM character recognition (second OCR engine) | Implemented and trained on **synthetic plates only**; see [SVM character recognition](#svm-character-recognition) |
-| React frontend (crop, filter studio, compare, results) | Implemented, 42 automated tests pass; the new layout, both SVM selectors and the SVM recognition panel were checked in a browser |
-| MATLAB Modules 1 to 3 | Run on MATLAB R2026a, 27 checks pass; need no toolbox (`matlab/common`). The standalone GUI is **not yet run** |
+| React frontend (crop, filter studio, compare, results) | Implemented, 48 automated tests pass; the new layout, both SVM selectors and the SVM recognition panel were checked in a browser |
+| MATLAB Modules 1 to 3 | Run on MATLAB R2026a, 30 checks pass; need no toolbox (`matlab/common`). The standalone GUI is **not yet run** |
 | MATLAB Engine bridge (`run_operation_file.m` + adapter) | Written and wired into the pipeline; engine routing and fallback are tested with a fake; all 28 MATLAB-capable filters and one detection were run through a real MATLAB R2026a Engine session (Windows, Python 3.12) |
 | Image registration | Implemented with OpenCV only (ORB + RANSAC); no MATLAB version (TODO) |
 | Backend Dockerfile | Built and run on Docker Desktop (Windows) before the SVM was added; it needed three extra system libraries, now in the file. The `COPY models` line for the SVM was added afterwards and has **not been rebuilt** |
@@ -38,7 +38,7 @@ and GUI required by the course brief.
 * **All course filters are usable:** histogram equalization and matching, brightness/contrast,
   gamma, mean and median smoothing, Laplacian and high-boost sharpening, Fourier low/high/band-pass;
   Sobel, Prewitt, Canny, Otsu, region growing, RGB and HSV segmentation, dilation, erosion, opening,
-  closing, plate-shape filtering; translation, scaling, rotation, shear, radial distortion
+  closing, plate-shape filtering; translation, scaling (with a zoom-in mode that magnifies around a chosen point and keeps the frame size), rotation, shear, radial distortion
   correction (forward and reverse mapping, nearest/bilinear/bicubic interpolation); image
   registration. Segmentation filters output a black and white mask, so they are meant for
   inspection and comparison; text reading generally works better on a normal image.
@@ -327,17 +327,17 @@ Environment: `ENABLE_SVM_OCR`, `SVM_OCR_MODEL_PATH` (see `.env.example`).
 ## Testing
 
 ```bash
-cd backend && python -m pytest          # 150 tests
-cd frontend && npm test                 # 42 tests (Vitest + Testing Library)
+cd backend && python -m pytest          # 164 tests
+cd frontend && npm test                 # 48 tests (Vitest + Testing Library)
 ```
 
-Results recorded when this was written: backend `150 passed`, frontend `42 passed`. Backend API
+Results recorded when this was written: backend `164 passed`, frontend `48 passed`. Backend API
 tests use a fake OCR and a disabled or stub SVM so they do not depend on model files; one test uses the real OCR engine and
 skips itself if it cannot load. The frontend "layout" test only checks that the stylesheet
 contains the expected breakpoints and reduced-motion rules; the actual responsive layout was
 checked by hand in a browser at desktop width and 375 px width.
 
-MATLAB: run `matlab/tests/run_all_tests.m` in MATLAB (27 checks, all passed on R2026a).
+MATLAB: run `matlab/tests/run_all_tests.m` in MATLAB (30 checks, all passed on R2026a).
 
 ## MATLAB integration
 

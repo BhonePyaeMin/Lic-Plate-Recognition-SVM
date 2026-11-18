@@ -58,7 +58,12 @@ switch opId
     case 'plate_shapes',       out = shape_segmentation(img, p.min_aspect, p.max_aspect);
     % ---- Module 3
     case 'translate',          out = translate_image(img, p.tx, p.ty, p.interpolation, p.mapping);
-    case 'scale',              out = scale_image(img, p.factor, p.factor, p.interpolation);
+    case 'scale'
+        if isfield(p, 'mode') && strcmp(p.mode, 'zoom-in')
+            out = zoom_image(img, p.factor, p.center_x, p.center_y, p.interpolation);
+        else
+            out = scale_image(img, p.factor, p.factor, p.interpolation);
+        end
     case 'rotate',             out = rotate_image(img, p.angle, p.interpolation, p.mapping, strcmp(p.enlarge, 'yes'));
     case 'shear',              out = shear_image(img, p.shear_x, p.shear_y, p.interpolation);
     case 'radial',             out = radial_distortion_correction(img, p.k1, p.k2, p.interpolation);

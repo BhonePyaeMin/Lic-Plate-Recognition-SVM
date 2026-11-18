@@ -321,7 +321,16 @@ def _translate(img, p, ref):
 
 def _scale(img, p, ref):
     h, w = img.shape[:2]
-    nh, nw = max(1, round(h * p["factor"])), max(1, round(w * p["factor"]))
+    if p.get("mode", "enlarge") == "zoom-in":
+        # Magnify (or shrink) about a fixed point and keep the frame size, so the plate can be
+        # brought up close without the picture growing. The point (cx, cy) stays where it is.
+        f = p["factor"]
+        cx, cy = p.get("center_x", 50) / 100.0 * (w - 1), p.get("center_y", 50) / 100.0 * (h - 1)
+        M = np.float32([[f, 0, cx * (1 - f)], [0, f, cy * (1 - f)]])
+        return cv2.warpAffine(img, M, (w, h), flags=INTERP[p["interpolation"]], borderMode=cv2.BORDER_CONSTANT)
+    # Round half UP, as MATLAB does. Python's round() rounds halves to even, so 493 * 0.5 = 246.5 became
+    # 246 here but 247 in MATLAB, and the same filter produced different image sizes in the two engines.
+    nh, nw = max(1, int(np.floor(h * p["factor"] + 0.5))), max(1, int(np.floor(w * p["factor"] + 0.5)))
     _check_size(nh, nw)
     return cv2.resize(img, (nw, nh), interpolation=INTERP[p["interpolation"]])
 
@@ -424,7 +433,13 @@ def _ops() -> list[Operation]:
         # Module 3
         Operation("translate", 3, "Transformations", "Translation", "Shifts the image.",
                   (num("tx", "Shift x (px)", 40, -2000, 2000), num("ty", "Shift y (px)", 20, -2000, 2000), INTERP_PARAM, MAPPING_PARAM), _translate),
-        Operation("scale", 3, "Transformations", "Scaling (zoom)", "Resizes the image with the chosen interpolation.", (num("factor", "Factor", 1.5, 0.1, 4, 0.05), INTERP_PARAM), _scale),
+        Operation("scale", 3, "Transformations", "Scaling (zoom)",
+                  "Enlarges the image, or in zoom-in mode magnifies around a point and keeps the frame size.",
+                  (num("factor", "Factor", 1.5, 0.1, 4, 0.05),
+                   sel("mode", "Mode", "enlarge", ["enlarge", "zoom-in"]),
+                   num("center_x", "Zoom-in centre x (%)", 50, 0, 100, 1),
+                   num("center_y", "Zoom-in centre y (%)", 50, 0, 100, 1),
+                   INTERP_PARAM), _scale),
         Operation("rotate", 3, "Transformations", "Rotation", "Rotates counter-clockwise about the centre.",
                   (num("angle", "Angle (deg)", 10, -180, 180, 0.5), sel("enlarge", "Enlarge canvas", "no", ["no", "yes"]), INTERP_PARAM, MAPPING_PARAM), _rotate),
         Operation("shear", 3, "Transformations", "Shear (affine)", "General affine example: slants rows or columns.",
