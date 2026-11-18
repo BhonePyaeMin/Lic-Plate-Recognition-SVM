@@ -3,7 +3,7 @@ function plate_toolbox_gui()
 %   Load an image, pick an operation (Modules 1 to 3), adjust up to three
 %   parameters, press Apply and compare the original with the result.
 %   Run it from the repository's matlab folder or call setup_paths first.
-%   Requires the Image Processing Toolbox.
+%   The operations need no toolbox (see matlab/common). This GUI has not been run yet.
 setup_paths();
 ops = toolbox_operations();
 S = struct('img', [], 'ref', [], 'result', []);   % shared state
@@ -108,5 +108,5 @@ end
 function setup_paths()
 here = fileparts(mfilename('fullpath'));
 root = fileparts(here);
-addpath(here, fullfile(root, 'module1_enhancement'), fullfile(root, 'module2_segmentation'), fullfile(root, 'module3_transformations'));
+addpath(here, fullfile(root, 'common'), fullfile(root, 'module1_enhancement'), fullfile(root, 'module2_segmentation'), fullfile(root, 'module3_transformations'));
 end

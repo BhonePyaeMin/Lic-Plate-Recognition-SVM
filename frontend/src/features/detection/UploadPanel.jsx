@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { FileImage, Upload, X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { formatBytes } from '../../utils/validateFile'
 
 export default function UploadPanel({ detection, limits, apiOffline }) {
@@ -39,17 +39,16 @@ export default function UploadPanel({ detection, limits, apiOffline }) {
           <p className="muted dropzone__hint">{formats}. Up to {limits.maxUploadMb} MB.</p>
         </div>
       ) : (
-        <figure className="preview">
-          <img src={previewUrl} alt="Selected vehicle" />
-          <figcaption>
-            <FileImage size={16} aria-hidden="true" />
-            <span className="preview__name" title={file.name}>{file.name}</span>
+        <div className="filerow">
+          <img className="filerow__thumb" src={previewUrl} alt="Selected vehicle" />
+          <div className="filerow__meta">
+            <span className="filerow__name" title={file.name}>{file.name}</span>
             <span className="muted">{formatBytes(file.size)}</span>
-            <button type="button" className="icon-btn" onClick={clear} disabled={loading} aria-label="Remove image">
-              <X size={16} aria-hidden="true" />
-            </button>
-          </figcaption>
-        </figure>
+          </div>
+          <button type="button" className="icon-btn" onClick={clear} disabled={loading} aria-label="Remove image">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
       )}
 
       <input

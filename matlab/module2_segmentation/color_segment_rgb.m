@@ -7,7 +7,7 @@ function mask = color_segment_rgb(img, lower, upper)
 if size(img, 3) ~= 3, error('color_segment_rgb:input', 'An RGB image is required.'); end
 if nargin < 2, lower = [170 170 170]; end
 if nargin < 3, upper = [255 255 255]; end
-img = im2uint8(img);
+img = to_uint8(img);
 mask = true(size(img, 1), size(img, 2));
 for c = 1:3
     mask = mask & img(:, :, c) >= lower(c) & img(:, :, c) <= upper(c);

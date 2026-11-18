@@ -30,8 +30,8 @@ function ParamField({ param, value, onChange, id }) {
   )
 }
 
-export default function FilterPanel({ prepare, mat }) {
-  const { catalog, byId, steps, engine, reference, needsReference } = prepare
+export default function FilterPanel({ prepare, mat, svm, svmOcr }) {
+  const { catalog, byId, steps, engine, detectorMode, ocrEngine, reference, needsReference } = prepare
   const [choice, setChoice] = useState('')
 
   const grouped = useMemo(() => {
@@ -50,8 +50,44 @@ export default function FilterPanel({ prepare, mat }) {
     failed: 'MATLAB failed to start; OpenCV is used.',
   }[mat?.state] ?? 'MATLAB status unknown.'
 
+  const svmNote = {
+    ready: 'A trained SVM is loaded. It was trained on synthetic scenes only, so its accuracy on real photos is unknown.',
+    no_model: 'No SVM model is installed on the server, so only the heuristic detector runs.',
+    disabled: 'The SVM is turned off on the server.',
+    failed: 'The SVM model could not be loaded; the heuristic detector is used.',
+  }[svm?.state] ?? 'SVM status unknown.'
+
+  const ocrNote = {
+    ready: 'The SVM segments the plate into characters and classifies each one. Trained on synthetic plates only; in Automatic mode RapidOCR steps in when the SVM cannot read the plate.',
+    no_model: 'No SVM character model is installed on the server, so RapidOCR reads the plate.',
+    disabled: 'SVM character recognition is turned off on the server.',
+    failed: 'The SVM character model could not be loaded; RapidOCR is used.',
+  }[svmOcr?.state] ?? 'SVM character recognition status unknown.'
+
   return (
     <div className="filters">
+      <details className="options" open>
+      <summary>Detection and engine options</summary>
+      <div className="engine">
+        <label htmlFor="detector-select">Plate detection method</label>
+        <select id="detector-select" value={detectorMode} onChange={(e) => prepare.setDetectorMode(e.target.value)}>
+          <option value="auto">Automatic (SVM ranks regions when available)</option>
+          <option value="contour">Heuristic only (OpenCV)</option>
+          <option value="svm" disabled={!svm?.available}>SVM verified (rejects non-plate regions)</option>
+        </select>
+        <p className="muted">{svmNote}</p>
+      </div>
+
+      <div className="engine">
+        <label htmlFor="ocr-select">Text recognition</label>
+        <select id="ocr-select" value={ocrEngine} onChange={(e) => prepare.setOcrEngine(e.target.value)}>
+          <option value="auto">Automatic (SVM first, RapidOCR if it cannot read)</option>
+          <option value="svm" disabled={!svmOcr?.available}>SVM characters only (HOG + SVM)</option>
+          <option value="rapidocr">RapidOCR only</option>
+        </select>
+        <p className="muted">{ocrNote}</p>
+      </div>
+
       <div className="engine">
         <label htmlFor="engine-select">Processing engine</label>
         <select id="engine-select" value={engine} onChange={(e) => prepare.setEngine(e.target.value)}>
@@ -61,6 +97,7 @@ export default function FilterPanel({ prepare, mat }) {
         </select>
         <p className="muted">{matlabNote}</p>
       </div>
+      </details>
 
       {catalog.state === 'unavailable' && (
         <p className="inline-note" role="note">Filters could not be loaded. Start the service and reload the page.</p>

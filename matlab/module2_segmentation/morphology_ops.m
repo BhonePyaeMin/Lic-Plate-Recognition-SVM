@@ -11,16 +11,12 @@ if ~islogical(bw)
     bw = otsu_threshold(bw);
 end
 sizePx = max(1, round(sizePx));
-switch lower(shape)
-    case 'rectangle', se = strel('rectangle', [max(1, round(sizePx / 2)) sizePx]);
-    case 'disk',      se = strel('disk', sizePx);
-    otherwise, error('morphology_ops:shape', 'Unknown structuring element "%s".', shape);
+if ~any(strcmpi(shape, {'rectangle', 'disk'}))
+    error('morphology_ops:shape', 'Unknown structuring element "%s".', shape);
 end
-switch lower(operation)
-    case 'dilate', out = imdilate(bw, se);
-    case 'erode',  out = imerode(bw, se);
-    case 'open',   out = imopen(bw, se);
-    case 'close',  out = imclose(bw, se);
-    otherwise, error('morphology_ops:operation', 'Unknown operation "%s".', operation);
+if ~any(strcmpi(operation, {'dilate', 'erode', 'open', 'close'}))
+    error('morphology_ops:operation', 'Unknown operation "%s".', operation);
 end
+% common/morph_binary.m implements the four operations without the toolbox.
+out = morph_binary(bw, operation, shape, sizePx);
 end

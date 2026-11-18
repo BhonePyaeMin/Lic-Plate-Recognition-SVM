@@ -8,9 +8,9 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
-from app.api.deps import get_detector, get_matlab, get_recognizer, get_settings
+from app.api.deps import get_detector, get_matlab, get_recognizer, get_settings, get_svm, get_svm_ocr
 from app.core.config import Settings
-from app.core.errors import EmptyUploadError, FileTooLargeError
+from app.core.errors import EmptyUploadError, FileTooLargeError, SvmOcrUnavailableError, SvmUnavailableError
 from app.schemas.detection import (
     ApplyResponse,
     ApplyResult,
@@ -28,7 +28,12 @@ from app.services.matlab_adapter import MatlabAdapter
 from app.services.pipeline import run_pipeline, to_data_url
 from app.services.plate_detector import PlateDetector
 from app.services.plate_recognizer import PlateRecognizer
-from app.services.processing import ENGINES, MAX_STEPS, apply_crop, parse_crop, parse_engine, parse_steps, run_steps
+from app.services.processing import (
+    DETECTOR_MODES, ENGINES, MAX_STEPS, OCR_ENGINES, apply_crop, parse_crop, parse_detector_mode, parse_engine,
+    parse_ocr_engine, parse_steps, run_steps,
+)
+from app.services.svm_ocr import FallbackRecognizer, SvmCharRecognizer
+from app.services.svm_plate import SvmPlateDetector, SvmVerifier
 
 root_router = APIRouter()
 api_router = APIRouter(prefix="/api/v1")
@@ -41,12 +46,16 @@ def health(
     settings: Settings = Depends(get_settings),
     recognizer: PlateRecognizer = Depends(get_recognizer),
     matlab: MatlabAdapter = Depends(get_matlab),
+    svm: SvmVerifier = Depends(get_svm),
+    svm_ocr: SvmCharRecognizer = Depends(get_svm_ocr),
 ) -> HealthResponse:
     ok, detail = recognizer.is_available()
     return HealthResponse(
         status="ok",
         ocr=CapabilityStatus(available=ok, enabled=True, state="ready" if ok else "failed", detail=detail),
         matlab=matlab.status(),
+        svm=CapabilityStatus(**svm.status()),
+        svm_ocr=CapabilityStatus(**svm_ocr.status()),
         max_upload_mb=settings.max_upload_mb,
         allowed_extensions=list(settings.allowed_extensions),
     )
@@ -104,6 +113,8 @@ def filters():
         "success": True,
         "max_steps": MAX_STEPS,
         "engines": list(ENGINES),
+        "detector_modes": list(DETECTOR_MODES),
+        "ocr_engines": list(OCR_ENGINES),
         "operations": [op.public() for op in CATALOG.values()],
     }
 
@@ -142,11 +153,29 @@ async def detect(
     crop: Optional[str] = Form(None),
     steps: Optional[str] = Form(None),
     engine: Optional[str] = Form("auto"),
+    detector_mode: Optional[str] = Form("auto"),
+    ocr_engine: Optional[str] = Form("auto"),
     settings: Settings = Depends(get_settings),
-    detector: PlateDetector = Depends(get_detector),
+    base_detector: PlateDetector = Depends(get_detector),
     recognizer: PlateRecognizer = Depends(get_recognizer),
     matlab: MatlabAdapter = Depends(get_matlab),
+    svm: SvmVerifier = Depends(get_svm),
+    svm_ocr: SvmCharRecognizer = Depends(get_svm_ocr),
 ):
+    ocr_choice = parse_ocr_engine(ocr_engine)
+    if ocr_choice == "svm":
+        if not svm_ocr.ready:
+            raise SvmOcrUnavailableError("The SVM character recognizer is not available. Use the RapidOCR engine or train the model first.")
+        recognizer = svm_ocr
+    elif ocr_choice == "auto" and svm_ocr.ready:
+        recognizer = FallbackRecognizer(svm_ocr, recognizer)  # SVM first, RapidOCR only if the SVM cannot read the plate
+    mode = parse_detector_mode(detector_mode)
+    detector: PlateDetector = base_detector
+    if mode == "svm" and not svm.ready:
+        raise SvmUnavailableError("The SVM verifier is not available. Use detector mode auto or contour, or train the model first.")
+    if mode in ("auto", "svm") and svm.ready:
+        # auto: SVM re-ranks only. svm: SVM also rejects regions below its threshold.
+        detector = SvmPlateDetector(base_detector, svm, reject=(mode == "svm"))
     data, ref_data, ref_name, ref_type = await _inputs(file, reference, settings)
     # Decoding, filtering and OCR are CPU-bound; keep them off the event loop.
     image, info = await run_in_threadpool(

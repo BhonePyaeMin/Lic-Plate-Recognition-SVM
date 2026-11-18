@@ -44,3 +44,13 @@ class MatlabUnavailableError(AppError):
 class OcrUnavailableError(AppError):
     status_code = 503
     error_code = "OCR_UNAVAILABLE"
+
+
+class SvmUnavailableError(AppError):
+    status_code = 503
+    error_code = "SVM_UNAVAILABLE"
+
+
+class SvmOcrUnavailableError(AppError):
+    status_code = 503
+    error_code = "SVM_OCR_UNAVAILABLE"

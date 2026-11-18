@@ -4,7 +4,7 @@ function [bw, level] = otsu_threshold(img)
 %   sigma_b^2(t) = (mu_T*omega(t) - mu(t))^2 / (omega(t) * (1 - omega(t))).
 %   Returns the binary image (pixels above t) and the level.
 if size(img, 3) == 3, img = rgb2gray(img); end
-img = im2uint8(img);
+img = to_uint8(img);
 p = accumarray(double(img(:)) + 1, 1, [256 1]) / numel(img);
 omega = cumsum(p);
 mu = cumsum(p .* (0:255)');

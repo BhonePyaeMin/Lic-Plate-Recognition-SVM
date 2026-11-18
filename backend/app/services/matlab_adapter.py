@@ -7,11 +7,11 @@ operation ids and parameter keys as the OpenCV implementations. Images are
 exchanged as PNG files in a private temporary directory that is deleted after
 each call (the client filename is never used).
 
-STATUS: this code path has NOT been exercised against a real MATLAB (none was
-installed where it was written). The status reporting and the fallback to
-OpenCV are covered by tests. Expect to debug the first real run.
+STATUS: exercised against MATLAB R2026a (all MATLAB-capable filters and one
+detection ran through the Engine). The status reporting and the fallback to
+OpenCV are also covered by tests. Other MATLAB releases were not tried.
 
-To enable: install MATLAB (with the Image Processing Toolbox), then
+To enable: install MATLAB (no toolbox needed), then
 `pip install matlabengine` (version matching your MATLAB release) in the
 backend virtual environment. Nothing else is required: the `matlab/` folder is
 found automatically (override with MATLAB_PATH).
@@ -23,6 +23,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -43,8 +44,10 @@ def _engine_package_present() -> bool:
 
 
 class MatlabAdapter:
-    def __init__(self, enabled: bool = False, matlab_path: Optional[str] = None):
+    def __init__(self, enabled: bool = False, matlab_path: Optional[str] = None, start_attempts: int = 3, retry_delay: float = 5.0):
         self.enabled = enabled
+        self.start_attempts = max(1, start_attempts)  # MATLAB can fail to start once (memory, a slow previous session) and work a moment later
+        self.retry_delay = retry_delay
         self.matlab_path = matlab_path or os.environ.get("MATLAB_PATH") or str(_DEFAULT_MATLAB_DIR)
         self._engine = None
         self._state = "disabled" if not enabled else ("starting" if _engine_package_present() else "no_package")
@@ -74,16 +77,22 @@ class MatlabAdapter:
         threading.Thread(target=self._start, name="matlab-start", daemon=True).start()
 
     def _start(self) -> None:
-        try:
-            import matlab.engine  # type: ignore
+        # The state stays "starting" while retrying, so the UI never shows a failure that a
+        # second attempt would have fixed.
+        for attempt in range(1, self.start_attempts + 1):
+            try:
+                import matlab.engine  # type: ignore
 
-            engine = matlab.engine.start_matlab()
-            engine.addpath(engine.genpath(self.matlab_path), nargout=0)
-            self._engine = engine
-            self._state = "ready"
-        except Exception as exc:
-            self._error = type(exc).__name__
-            self._state = "failed"
+                engine = matlab.engine.start_matlab()
+                engine.addpath(engine.genpath(self.matlab_path), nargout=0)
+                self._engine = engine
+                self._state = "ready"
+                return
+            except Exception as exc:
+                self._error = type(exc).__name__
+                if attempt < self.start_attempts:
+                    time.sleep(self.retry_delay)
+        self._state = "failed"
 
     # --------------------------------------------------------------- run
     def run_operation(self, op_id: str, params: dict, image: np.ndarray, ref: Optional[np.ndarray] = None) -> np.ndarray:

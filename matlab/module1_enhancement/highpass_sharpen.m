@@ -8,8 +8,8 @@ f = im2double(img);
 kernel = ones(k) / (k * k);
 out = f;
 for c = 1:size(f, 3)
-    low = imfilter(f(:, :, c), kernel, 'replicate');
+    low = filter_replicate(f(:, :, c), kernel);
     out(:, :, c) = f(:, :, c) + boost * (f(:, :, c) - low);
 end
-out = im2uint8(min(max(out, 0), 1));
+out = to_uint8(min(max(out, 0), 1));
 end

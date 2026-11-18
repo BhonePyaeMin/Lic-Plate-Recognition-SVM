@@ -6,12 +6,12 @@ function out = histogram_equalization(img)
 %   Method: s = round(255 * (CDF(r) - CDFmin) / (N - CDFmin)).
 if size(img, 3) == 3
     hsv = rgb2hsv(img);
-    v = histogram_equalization(im2uint8(hsv(:, :, 3)));
+    v = histogram_equalization(to_uint8(hsv(:, :, 3)));
     hsv(:, :, 3) = double(v) / 255;
-    out = im2uint8(hsv2rgb(hsv));
+    out = to_uint8(hsv2rgb(hsv));
     return
 end
-img = im2uint8(img);
+img = to_uint8(img);
 counts = accumarray(double(img(:)) + 1, 1, [256 1]);
 cdf = cumsum(counts);
 cdfMin = cdf(find(cdf > 0, 1, 'first'));

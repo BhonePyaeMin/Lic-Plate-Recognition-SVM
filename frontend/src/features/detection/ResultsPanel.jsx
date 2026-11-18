@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { ScanLine, SearchX, TriangleAlert } from 'lucide-react'
 import ResultSkeleton from './ResultSkeleton.jsx'
 import ResultView from './ResultView.jsx'
@@ -29,8 +30,17 @@ function Notice({ icon: Icon, title, children, tone = 'neutral' }) {
 export default function ResultsPanel({ detection, prepare }) {
   const { phase, data, error, previewUrl, dimensions } = detection
   const preprocessed = Boolean(prepare?.crop) || (prepare?.steps.length ?? 0) > 0
+  const ref = useRef(null)
+
+  // When a run starts or finishes, bring the results into view so nobody has to hunt for them.
+  useEffect(() => {
+    if (!['loading', 'success', 'no_plate', 'error'].includes(phase)) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ref.current?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+  }, [phase])
+
   return (
-    <section className="results" aria-labelledby="results-title" aria-busy={phase === 'loading'}>
+    <section ref={ref} className="results" aria-labelledby="results-title" aria-busy={phase === 'loading'}>
       <h2 id="results-title" className="sr-only">Results</h2>
       {phase === 'loading' && <ResultSkeleton dimensions={dimensions} showProcessed={preprocessed} />}
       {phase === 'success' && <ResultView data={data} previewUrl={previewUrl} />}

@@ -3,8 +3,8 @@ function out = histogram_matching(img, ref)
 %   For each source level s, find the smallest reference level r whose
 %   cumulative probability is >= that of s. RGB images are matched per
 %   channel; a grayscale reference is replicated for an RGB source.
-img = im2uint8(img);
-ref = im2uint8(ref);
+img = to_uint8(img);
+ref = to_uint8(ref);
 if size(img, 3) == 3
     if size(ref, 3) ~= 3
         ref = repmat(ref, [1 1 3]);

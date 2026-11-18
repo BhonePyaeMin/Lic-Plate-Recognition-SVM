@@ -49,3 +49,6 @@ Thumbs.db
 .idea/
 .vscode/
 .claude/
+
+# Local run logs
+*.log

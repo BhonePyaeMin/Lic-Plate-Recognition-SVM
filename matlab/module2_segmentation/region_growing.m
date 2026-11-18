@@ -6,7 +6,7 @@ function mask = region_growing(img, seed, tolerance)
 %   the region grows. The default seed is the image centre. Basic method: it
 %   leaks through weak edges and is sensitive to the seed and tolerance.
 if size(img, 3) == 3, img = rgb2gray(img); end
-f = double(im2uint8(img));
+f = double(to_uint8(img));
 [H, W] = size(f);
 if nargin < 2 || isempty(seed), seed = [round(H / 2), round(W / 2)]; end
 if nargin < 3, tolerance = 20; end

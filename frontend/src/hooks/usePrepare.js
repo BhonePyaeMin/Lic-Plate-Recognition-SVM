@@ -16,6 +16,8 @@ export function usePrepare(file, healthState) {
   const [steps, setSteps] = useState([])
   const [crop, setCrop] = useState(null)
   const [engine, setEngine] = useState('auto')
+  const [detectorMode, setDetectorMode] = useState('auto') // plate-region method; does not affect the filter preview
+  const [ocrEngine, setOcrEngine] = useState('auto') // text recognition: auto = SVM first, RapidOCR if it cannot read; detect-only
   const [reference, setReference] = useState(null)
   const [preview, setPreview] = useState({ phase: 'idle', image: null, info: null, error: null })
   const abortRef = useRef(null)
@@ -136,8 +138,8 @@ export function usePrepare(file, healthState) {
   }, [run, file, steps, crop, needsReference, reference])
 
   return {
-    catalog, byId, steps, crop, engine, reference, preview, needsReference, options,
+    catalog, byId, steps, crop, engine, detectorMode, ocrEngine, reference, preview, needsReference, options,
     addStep, applyPreset, removeStep, moveStep, setParam, clearSteps,
-    setCrop: updateCrop, setEngine: updateEngine, setReference: updateReference, run,
+    setCrop: updateCrop, setEngine: updateEngine, setDetectorMode, setOcrEngine, setReference: updateReference, run,
   }
 }

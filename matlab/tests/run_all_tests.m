@@ -1,12 +1,11 @@
 function run_all_tests()
 %RUN_ALL_TESTS Self-checks for the three modules using synthetic images.
 %   Prints PASS/FAIL per check and raises an error if any check fails.
-%   Needs the Image Processing Toolbox. No sample files are required.
+%   Uses base MATLAB only (no toolbox). No sample files are required.
 %
-%   STATUS: written without access to MATLAB, so these checks have not been
-%   executed yet. Run this file once in MATLAB and fix anything it reports.
+%   STATUS: all checks passed on MATLAB R2026a (base MATLAB, no toolbox).
 root = fileparts(fileparts(mfilename('fullpath')));
-addpath(fullfile(root, 'module1_enhancement'), fullfile(root, 'module2_segmentation'), ...
+addpath(fullfile(root, 'common'), fullfile(root, 'module1_enhancement'), fullfile(root, 'module2_segmentation'), ...
         fullfile(root, 'module3_transformations'), fullfile(root, 'toolbox_gui'), fullfile(root, 'api'));
 
 checks = {
@@ -30,6 +29,11 @@ checks = {
     'identity affine is lossless (bicubic)',          @t_identity_bicubic
     'forward mapping scaling leaves holes',           @t_forward_holes
     'radial correction with k1=k2=0 is identity',     @t_radial_identity
+    'median_filter matches a naive median (k=3,15)',  @t_median_exact
+    'filter_replicate matches a naive correlation',   @t_filter_exact
+    'morph dilate/erode match naive definitions',     @t_morph_exact
+    'label_components 8- vs 4-connectivity',          @t_label
+    'canny_edges hugs a rectangle outline',           @t_canny
     'run_operation_file writes a result (mean)',      @t_dispatcher
     'run_operation_file rejects unknown ids',         @t_dispatcher_unknown
 };
@@ -71,11 +75,11 @@ function ok = t_hist_match()
 g = test_image();
 ref = uint8(150 + 50 * rand(120, 200));
 m = histogram_matching(g, ref);
-ok = abs(mean2(m) - mean2(ref)) < abs(mean2(g) - mean2(ref));
+ok = abs(mean_all(m) - mean_all(ref)) < abs(mean_all(g) - mean_all(ref));
 end
 function ok = t_brightness()
 g = test_image();
-ok = mean2(adjust_brightness_contrast(g, 1, 30)) > mean2(g);
+ok = mean_all(adjust_brightness_contrast(g, 1, 30)) > mean_all(g);
 end
 function ok = t_median()
 g = uint8(100 * ones(30));
@@ -85,7 +89,7 @@ ok = m(10, 10) == 100;
 end
 function ok = t_mean()
 g = test_image();
-ok = std2(mean_smoothing(g, 5)) < std2(g);
+ok = std_all(mean_smoothing(g, 5)) < std_all(g);
 end
 function ok = t_laplacian()
 rgb = cat(3, test_image(), test_image(), test_image());
@@ -95,7 +99,7 @@ end
 function ok = t_fourier_low()
 rng(2);
 g = uint8(255 * rand(64));
-ok = std2(fourier_filter(g, 'low', 8)) < std2(g);
+ok = std_all(fourier_filter(g, 'low', 8)) < std_all(g);
 end
 function ok = t_fourier_band_error()
 try
@@ -195,4 +199,97 @@ end
 function ok = t_radial_identity()
 g = test_image();
 ok = isequal(radial_distortion_correction(g, 0, 0), g);
+end
+
+function m = mean_all(x)
+% Mean of all elements (base-MATLAB stand-in for mean2).
+m = mean(double(x(:)));
+end
+
+function s = std_all(x)
+% Standard deviation of all elements (base-MATLAB stand-in for std2).
+s = std(double(x(:)));
+end
+
+% ----- tests for the base-MATLAB helpers in matlab/common ---------------------
+function ok = t_median_exact()
+rng(2);
+A = uint8(randi(255, 17, 23));
+ok = true;
+for k = [3 15]
+    r = (k - 1) / 2;
+    ri = mirror_index(size(A, 1), r);  ci = mirror_index(size(A, 2), r);
+    P = A(ri, ci);
+    naive = zeros(size(A), 'uint8');
+    for i = 1:size(A, 1)
+        for j = 1:size(A, 2)
+            w = P(i:i + k - 1, j:j + k - 1);
+            naive(i, j) = median(w(:));
+        end
+    end
+    ok = ok && isequal(median_filter(A, k), naive);
+end
+end
+
+function idx = mirror_index(n, r)
+i = (1 - r):(n + r);
+m = mod(i - 1, 2 * n);
+idx = m + 1;  over = m >= n;  idx(over) = 2 * n - m(over);
+end
+
+function ok = t_filter_exact()
+rng(3);
+f = rand(12, 14);
+K = [-1 0 1; -2 0 2; -1 0 1];
+naive = zeros(size(f));
+for i = 1:12
+    for j = 1:14
+        s = 0;
+        for a = 1:3
+            for b = 1:3
+                s = s + K(a, b) * f(min(max(i + a - 2, 1), 12), min(max(j + b - 2, 1), 14));
+            end
+        end
+        naive(i, j) = s;
+    end
+end
+ok = max(abs(naive(:) - reshape(filter_replicate(f, K), [], 1))) < 1e-12;
+end
+
+function ok = t_morph_exact()
+rng(4);
+bw = rand(20, 25) > 0.7;
+K = true(max(1, round(5 / 2)), 5);
+o = floor((size(K) + 1) / 2);
+[H, W] = size(bw);
+dil = false(H, W);  ero = true(H, W);
+for i = 1:H
+    for j = 1:W
+        for a = 1:size(K, 1)
+            for b = 1:size(K, 2)
+                ii = i - (a - o(1));  jj = j - (b - o(2));
+                if ii >= 1 && ii <= H && jj >= 1 && jj <= W && bw(ii, jj), dil(i, j) = true; end
+                ii = i + (a - o(1));  jj = j + (b - o(2));
+                if ii >= 1 && ii <= H && jj >= 1 && jj <= W && ~bw(ii, jj), ero(i, j) = false; end
+            end
+        end
+    end
+end
+ok = isequal(morph_binary(bw, 'dilate', 'rectangle', 5), dil) ...
+  && isequal(morph_binary(bw, 'erode', 'rectangle', 5), ero);
+end
+
+function ok = t_label()
+M = false(8, 10);
+M(2:3, 2:3) = true;  M(4, 4) = true;  M(6, 6:9) = true;  M(1, 10) = true;
+[~, n8] = label_components(M, 8);
+[~, n4] = label_components(M, 4);
+ok = n8 == 3 && n4 == 4;
+end
+
+function ok = t_canny()
+G = zeros(80, 100);  G(25:55, 30:70) = 1;
+E = canny_edges(G, [0.1 0.3]);
+[r, c] = find(E);
+ok = nnz(E) > 100 && all(r >= 22 & r <= 58 & c >= 27 & c <= 73) && ~any(E(30:50, 35:65), 'all');
 end

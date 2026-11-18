@@ -6,11 +6,13 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_matlab, get_recognizer, get_settings
+from app.api.deps import get_matlab, get_recognizer, get_settings, get_svm, get_svm_ocr
 from app.core.config import load_settings
 from app.main import create_app
 from app.services.matlab_adapter import MatlabAdapter
 from app.services.plate_recognizer import OcrOutput
+from app.services.svm_ocr import SvmCharRecognizer
+from app.services.svm_plate import SvmVerifier
 
 
 class FakeRecognizer:
@@ -37,13 +39,17 @@ def recognizer() -> FakeRecognizer:
 
 @pytest.fixture
 def make_client(recognizer):
-    def _make(raise_server_exceptions: bool = True, matlab=None, **setting_overrides) -> TestClient:
+    def _make(raise_server_exceptions: bool = True, matlab=None, svm=None, svm_ocr=None, **setting_overrides) -> TestClient:
         app = create_app()
         settings = dataclasses.replace(load_settings(), **setting_overrides)
         app.dependency_overrides[get_settings] = lambda: settings
         app.dependency_overrides[get_recognizer] = lambda: recognizer
         adapter = matlab if matlab is not None else MatlabAdapter(enabled=False)
         app.dependency_overrides[get_matlab] = lambda: adapter
+        verifier = svm if svm is not None else SvmVerifier.disabled()  # keeps API tests independent of the model file
+        app.dependency_overrides[get_svm] = lambda: verifier
+        char_ocr = svm_ocr if svm_ocr is not None else SvmCharRecognizer.disabled()
+        app.dependency_overrides[get_svm_ocr] = lambda: char_ocr
         return TestClient(app, raise_server_exceptions=raise_server_exceptions)
 
     return _make

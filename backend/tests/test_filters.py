@@ -185,6 +185,51 @@ def test_engine_selection_and_fallback():
     assert rec[0]["engine"] == "opencv"
 
 
+def _fake_matlab_modules(monkeypatch, failures: int):
+    """Install a fake `matlab.engine` whose start_matlab fails `failures` times, then works."""
+    import sys
+    import types
+
+    calls = {"n": 0}
+
+    class Engine:
+        def genpath(self, p):
+            return p
+
+        def addpath(self, *a, **k):
+            pass
+
+    def start_matlab():
+        calls["n"] += 1
+        if calls["n"] <= failures:
+            raise RuntimeError("engine did not start")
+        return Engine()
+
+    pkg, eng = types.ModuleType("matlab"), types.ModuleType("matlab.engine")
+    eng.start_matlab = start_matlab
+    pkg.engine = eng
+    monkeypatch.setitem(sys.modules, "matlab", pkg)
+    monkeypatch.setitem(sys.modules, "matlab.engine", eng)
+    return calls
+
+
+def test_matlab_start_retries_after_a_transient_failure(monkeypatch):
+    calls = _fake_matlab_modules(monkeypatch, failures=2)
+    adapter = MatlabAdapter(enabled=True, start_attempts=3, retry_delay=0)
+    adapter._state = "starting"
+    adapter._start()
+    assert adapter.ready and calls["n"] == 3 and adapter.status().state == "ready"
+
+
+def test_matlab_start_reports_failure_after_all_attempts(monkeypatch):
+    calls = _fake_matlab_modules(monkeypatch, failures=99)
+    adapter = MatlabAdapter(enabled=True, start_attempts=3, retry_delay=0)
+    adapter._state = "starting"
+    adapter._start()
+    st = adapter.status()
+    assert not adapter.ready and calls["n"] == 3 and st.state == "failed" and "RuntimeError" in st.detail
+
+
 def test_matlab_adapter_status_without_package():
     st = MatlabAdapter(enabled=True).status()  # matlabengine is not installed in the test environment
     assert st.available is False and st.state in {"no_package", "starting", "failed"}

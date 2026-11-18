@@ -5,20 +5,20 @@
   /* Color: neutral slate plus one blue accent. */
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-sunken: #eef0f4;
-  --border: #d9dde5;
-  --border-strong: #b6bdca;
-  --text: #11151c;
-  --text-muted: #4b5565;
-  --accent: #1d4ed8;
-  --accent-hover: #1e40af;
+  --surface-sunken: #f4f5f9;
+  --border: #e3e6ee;
+  --border-strong: #c3c9d6;
+  --text: #0f1420;
+  --text-muted: #526075;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
   --accent-contrast: #ffffff;
-  --accent-soft: #e6edff;
+  --accent-soft: #eef0ff;
   --danger: #b42318;
   --danger-soft: #fdecea;
-  --success: #17803d;
+  --success: #15803d;
   --warning: #8a5a00;
-  --focus: #1d4ed8;
+  --focus: #4f46e5;
 
   /* Type scale */
   --text-xs: 0.75rem;
@@ -38,11 +38,18 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
-  --shadow-md: 0 2px 8px rgb(16 24 40 / 0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.04);
+  --shadow-md: 0 4px 16px rgb(16 24 40 / 0.08);
+  --header-h: 4rem;
+  --rail-w: 25rem;
+
+  /* SVM panel legend: red = readable, orange = small, grey = not read */
+  --svm-readable: #d92d20;
+  --svm-small: #f08c00;
+  --svm-unread: #8a93a3;
 
   --skeleton-base: #e6e9ef;
   --skeleton-shine: #f3f5f8;

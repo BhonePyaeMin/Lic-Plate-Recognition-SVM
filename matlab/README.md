@@ -2,9 +2,13 @@
 
 Course modules implemented as plain MATLAB functions plus a GUI.
 
-**Status: written but not yet executed.** MATLAB was not installed on the machine where this
-code was written, so nothing here has been run. Run `tests/run_all_tests.m` first and fix any
-reported problem before demonstrating. Requires the Image Processing Toolbox.
+**Status:** the module functions and `tests/run_all_tests.m` (27 checks) were run on MATLAB R2026a
+and pass. The standalone GUI (`toolbox_gui/plate_toolbox_gui.m`) has **not** been run yet. No toolbox
+is required for the modules: `common/` holds base-MATLAB replacements for the Image Processing
+Toolbox functions that were used before (`im2uint8`, `mat2gray`, `imfilter`, `medfilt2`, `strel`,
+`imdilate`/`imerode`/`imopen`/`imclose`, `edge` for Canny, `bwareaopen`, `bwconncomp`,
+`regionprops`). They are independent implementations, so outputs can differ slightly from the
+toolbox versions (for example the disk structuring element and Canny).
 
 ## Run
 

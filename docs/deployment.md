@@ -40,6 +40,12 @@ CORS_ORIGINS=https://YOUR-FRONTEND-ORIGIN uvicorn app.main:app --host 0.0.0.0 --
 Run it under a process manager (systemd, supervisor) behind a TLS-terminating reverse proxy.
 Set the proxy's request body limit at or above `MAX_UPLOAD_MB` (nginx: `client_max_body_size`).
 
+### SVM model
+
+The trained weights (`backend/models/plate_svm.npz` about 20 KB and `ocr_svm.npz` about 2.6 MB, each with a `.json`) must ship with
+the backend; the Dockerfile copies the folder. Without them the API still starts and `/health` reports
+`svm: no_model` (and `svm_ocr: no_model`). Serving needs no scikit-learn. Both models are trained on synthetic data only.
+
 ### Environment variables
 
 See `.env.example`. Important in production:
@@ -79,8 +85,8 @@ API for Python must match the MATLAB release. Recommended approach for the cours
 * **Separate demonstration.** Run the MATLAB GUI locally and the web app from the deployed URLs.
 * **Runtime integration.** Only on a machine with licensed MATLAB: run `pip install matlabengine`
   in the backend environment and restart. The backend starts MATLAB in the background and routes
-  filters through `matlab/api/run_operation_file.m`. It was never run against real MATLAB, so test
-  with engine "MATLAB only" before relying on it. On other hosts leave it as is: the header shows
+  filters through `matlab/api/run_operation_file.m`. It has been run against MATLAB R2026a only; test
+  with engine "MATLAB only" on your release before relying on it. On other hosts leave it as is: the header shows
   "MATLAB: not installed" and OpenCV runs everything.
 
 ## 6. Scaling notes

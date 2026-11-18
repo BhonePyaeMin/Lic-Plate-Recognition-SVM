@@ -3,8 +3,11 @@ import { ScanLine } from 'lucide-react'
 function statusText(health) {
   if (health.state === 'checking') return 'Checking service'
   if (health.state === 'offline') return 'Service offline'
-  const ocr = health.data?.ocr?.available ? 'OCR ready' : 'OCR unavailable'
-  return `Service online, ${ocr}`
+  const svm = health.data?.svm
+  const ocrDown = health.data && !health.data.ocr?.available
+  // Older backends do not report an SVM state; fall back to the OCR status for them.
+  const main = svm ? (svm.available ? 'SVM ready' : 'SVM unavailable') : ocrDown ? 'OCR unavailable' : 'OCR ready'
+  return `Service online, ${main}${svm && ocrDown ? ', OCR unavailable' : ''}`
 }
 
 const MATLAB_LABEL = {
@@ -22,7 +25,7 @@ export default function Header({ health }) {
       <div className="header__inner">
         <div className="brand">
           <span className="brand__icon" aria-hidden="true"><ScanLine size={20} /></span>
-          <span className="brand__name">Plate Reader</span>
+          <span className="brand__name">License Plate Recognition Using SVM</span>
         </div>
         <div className="header__status" role="status">
           <span className={`dot dot--${health.state}`} aria-hidden="true" />

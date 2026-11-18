@@ -7,8 +7,8 @@ kernel = [0 1 0; 1 -4 1; 0 1 0];
 f = im2double(img);
 out = f;
 for c = 1:size(f, 3)
-    lap = imfilter(f(:, :, c), kernel, 'replicate');
+    lap = filter_replicate(f(:, :, c), kernel);
     out(:, :, c) = f(:, :, c) - strength * lap;
 end
-out = im2uint8(min(max(out, 0), 1));
+out = to_uint8(min(max(out, 0), 1));
 end

@@ -15,6 +15,8 @@ from app.services.matlab_adapter import MatlabAdapter
 MAX_STEPS = 8
 MIN_CROP_W, MIN_CROP_H = 24, 12
 ENGINES = ("auto", "opencv", "matlab")
+DETECTOR_MODES = ("auto", "contour", "svm")
+OCR_ENGINES = ("auto", "rapidocr", "svm")
 
 
 @dataclass
@@ -36,6 +38,20 @@ def parse_engine(raw: Optional[str]) -> str:
     engine = (raw or "auto").lower()
     if engine not in ENGINES:
         raise InvalidParamsError("Engine must be auto, opencv or matlab.")
+    return engine
+
+
+def parse_detector_mode(raw: Optional[str]) -> str:
+    mode = (raw or "auto").lower()
+    if mode not in DETECTOR_MODES:
+        raise InvalidParamsError("Detector mode must be auto, contour or svm.")
+    return mode
+
+
+def parse_ocr_engine(raw: Optional[str]) -> str:
+    engine = (raw or "auto").lower()
+    if engine not in OCR_ENGINES:
+        raise InvalidParamsError("OCR engine must be auto, rapidocr or svm.")
     return engine
 
 

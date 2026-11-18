@@ -25,6 +25,13 @@ from app.core.errors import OcrUnavailableError
 class OcrOutput:
     raw_text: str  # engine output, lines joined by a space, unmodified
     confidence: Optional[float]  # mean line score 0..1, None if the engine gave none
+    detail: Optional[list] = None  # optional per-character records (SVM engine): char, margin, box
+    engine: Optional[str] = None  # engine that produced the text; None = the recognizer's own name
+    views: Optional[dict] = None  # optional images for display (SVM engine): 'segmented', 'glyphs'
+    fallback: bool = False  # the preferred engine could not read the plate, a fallback engine did
+    alternative: Optional[dict] = None  # a second engine's reading for cross-checking: engine, text, confidence
+    suspect: bool = False  # the SVM's character segmentation looked unreliable (touching characters left unsplit)
+    fallback_reason: Optional[str] = None  # why `fallback` is set: 'unreadable' or 'segmentation'
 
 
 class PlateRecognizer(Protocol):
@@ -34,6 +41,9 @@ class PlateRecognizer(Protocol):
     def is_available(self) -> tuple[bool, str]: ...
 
     def recognize(self, image: np.ndarray) -> OcrOutput: ...
+
+
+MIN_TEXT_CHARS = 4  # shorter strings are treated as OCR noise, not a plate
 
 
 def normalize_plate_text(raw: str) -> str:

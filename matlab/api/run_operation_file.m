@@ -10,7 +10,7 @@ function run_operation_file(inPath, outPath, opId, paramsJson, refPath)
 %   matching). Image registration is intentionally not available here.
 here = fileparts(mfilename('fullpath'));
 root = fileparts(here);
-addpath(fullfile(root, 'module1_enhancement'), fullfile(root, 'module2_segmentation'), ...
+addpath(fullfile(root, 'common'), fullfile(root, 'module1_enhancement'), fullfile(root, 'module2_segmentation'), ...
         fullfile(root, 'module3_transformations'));
 
 img = read_rgb_or_gray(inPath);

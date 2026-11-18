@@ -32,12 +32,15 @@ export async function getFilters(signal) {
 }
 
 /** Build the multipart body shared by preview and detect. */
-export function buildForm(file, { crop, steps, engine, reference } = {}) {
+export function buildForm(file, { crop, steps, engine, reference, detectorMode, ocrEngine } = {}) {
   const body = new FormData()
   body.append('file', file)
   if (crop) body.append('crop', JSON.stringify(crop))
   if (steps?.length) body.append('steps', JSON.stringify(steps.map((s) => ({ id: s.id, params: s.params }))))
   body.append('engine', engine || 'auto')
+  // Only the detect request uses this; 'auto' is the server default, so it is not sent.
+  if (detectorMode && detectorMode !== 'auto') body.append('detector_mode', detectorMode)
+  if (ocrEngine && ocrEngine !== 'auto') body.append('ocr_engine', ocrEngine)
   if (reference) body.append('reference', reference)
   return body
 }

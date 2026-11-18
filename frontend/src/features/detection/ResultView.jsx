@@ -1,6 +1,7 @@
 import { CircleCheck, Download, Info } from 'lucide-react'
 import CopyButton from '../../components/CopyButton.jsx'
 import EngineBadge from '../../components/EngineBadge.jsx'
+import SvmPanel from './SvmPanel.jsx'
 
 function Figure({ title, src, alt, className = '', action }) {
   return (
@@ -25,11 +26,16 @@ export default function ResultView({ data, previewUrl }) {
     ['Image size', `${r.image_width} x ${r.image_height} px`],
     ['Processing time', `${Math.round(r.processing_time_ms)} ms`],
     ['Detector', r.detector],
-    ['Region score', r.detector.startsWith('user-crop') ? 'Not applicable (the whole selected area was read)' : `${r.detector_score.toFixed(2)} (ranking heuristic, not a probability)`],
+    ['Region score', r.detector.startsWith('user-crop') ? 'Not applicable (the whole selected area was read)' : `${r.detector_score.toFixed(2)} (ranking score, not a probability)`],
+    ['SVM score', r.svm_used ? `${r.svm_score.toFixed(2)} (${r.svm_score >= 0 ? 'plate side' : 'non-plate side'} of the SVM boundary, not a probability)` : 'Not applied (heuristic ranking only)'],
     ['OCR engine', r.ocr_engine ?? 'Not run'],
     ['Raw OCR output', r.raw_ocr_text ?? 'None'],
     ['MATLAB', r.matlab_used ? `Used in ${steps.filter((s) => s.engine === 'matlab').length} step(s)` : 'Not used'],
   ]
+  if (r.svm_chars?.length) {
+    const at = rows.findIndex(([k]) => k === 'OCR engine') + 1
+    rows.splice(at, 0, ['SVM characters', r.svm_chars.map((c) => `${c.char} (${c.margin.toFixed(1)})`).join('  ') + '  (character, SVM margin; not probabilities)'])
+  }
   if (pre?.crop) rows.splice(2, 0, ['Crop applied', `${pre.crop.width} x ${pre.crop.height} px at (${pre.crop.x}, ${pre.crop.y}) in the original`])
 
   return (
@@ -56,9 +62,26 @@ export default function ResultView({ data, previewUrl }) {
           {recognized && r.confidence !== null && (
             <span className="chip">OCR confidence {Math.round(r.confidence * 100)}%</span>
           )}
+          {r.ocr_engine && (
+            <span className="chip chip--muted">
+              Read by {r.ocr_engine.startsWith('svm-hog-chars') ? 'the SVM' : r.ocr_engine.startsWith('rapidocr') ? 'RapidOCR' : r.ocr_engine}
+              {r.ocr_fallback ? (r.ocr_fallback_reason === 'segmentation' ? " (the SVM's character splitting looked unreliable)" : ' (the SVM could not read this plate)') : ''}
+            </span>
+          )}
+          {r.ocr_alternative && (
+            r.ocr_alternative.text && r.ocr_alternative.text === r.plate_text ? (
+              <span className="chip chip--agree">RapidOCR agrees</span>
+            ) : (
+              <span className="chip chip--differ">
+                {r.ocr_alternative.engine?.startsWith('svm') ? 'The SVM' : 'RapidOCR'} read {r.ocr_alternative.text ?? 'nothing'}{r.ocr_alternative.text ? ' (differs, check the plate)' : ''}
+              </span>
+            )
+          )}
           <span className="chip chip--muted">Verify the text against the image before relying on it</span>
         </div>
       </div>
+
+      <SvmPanel key={r.processing_time_ms} result={r} imageUrl={r.input_image ?? previewUrl} />
 
       <div className="figures">
         <Figure title="Original" src={previewUrl} alt="Original uploaded image" />

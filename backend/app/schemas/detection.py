@@ -27,6 +27,38 @@ class PreprocessingInfo(BaseModel):
     steps: list[StepRecord] = []
 
 
+class SvmChar(BaseModel):
+    char: str
+    margin: float  # SVM score of the chosen class: distance-like, NOT a probability
+    x: int
+    y: int
+    width: int
+    height: int
+
+
+class CandidateInfo(BaseModel):
+    """One candidate plate region that was read, for the SVM view (best one is `selected`)."""
+    index: int  # 1-based, in ranking order
+    box: BoundingBox  # coordinates of the analysed image, like DetectionResult.bounding_box
+    source: str
+    status: Literal["readable", "small", "unread"]  # readable: text found; small: tiny region; unread: no usable text
+    text: Optional[str] = None
+    selected: bool = False
+    ocr_engine: Optional[str] = None
+    svm_score: Optional[float] = None  # plate-vs-not SVM margin, None when the SVM verifier did not run
+    characters: Optional[int] = None  # glyphs the character SVM segmented
+    crop: str  # data URL (PNG), the deskewed plate crop
+    segmented: Optional[str] = None  # data URL (PNG): plate with the SVM's character boxes
+    glyphs: Optional[str] = None  # data URL (PNG): normalised glyphs with predicted characters
+
+
+class OcrAlternative(BaseModel):
+    """The other engine's reading of the same plate, shown so a disagreement is visible."""
+    engine: Optional[str] = None
+    text: Optional[str] = None
+    confidence: Optional[float] = None
+
+
 class DetectionResult(BaseModel):
     # "recognized": text was read. "located_unreadable": a candidate region was
     # found but OCR returned nothing usable.
@@ -36,8 +68,15 @@ class DetectionResult(BaseModel):
     confidence: Optional[float] = None  # 0..1, only when the OCR engine reports one
     bounding_box: BoundingBox
     detector: str  # identifier of the detector that produced the box
-    detector_score: float  # heuristic ranking score, NOT a probability
+    detector_score: float  # ranking score (blend when the SVM ran), NOT a probability
+    svm_used: bool = False  # the HOG + SVM verifier scored this region
+    svm_score: Optional[float] = None  # SVM margin: distance-like, positive = plate side. NOT a probability
     ocr_engine: Optional[str] = None
+    ocr_fallback: bool = False  # the SVM could not read the plate, so RapidOCR did
+    ocr_fallback_reason: Optional[str] = None  # 'unreadable' (SVM found no text) or 'segmentation' (SVM splitting unreliable)
+    ocr_alternative: Optional[OcrAlternative] = None  # cross-check by the second engine (Automatic mode)
+    candidates: list[CandidateInfo] = []
+    svm_chars: Optional[list[SvmChar]] = None  # per-character SVM output, only when ocr_engine is the SVM
     image_width: int
     image_height: int
     processing_time_ms: float  # measured server side
@@ -71,6 +110,8 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
     ocr: CapabilityStatus
     matlab: CapabilityStatus
+    svm: Optional[CapabilityStatus] = None
+    svm_ocr: Optional[CapabilityStatus] = None
     max_upload_mb: int
     allowed_extensions: list[str]
 

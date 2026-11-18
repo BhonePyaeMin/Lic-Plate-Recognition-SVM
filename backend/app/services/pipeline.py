@@ -12,12 +12,14 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from app.schemas.detection import BoundingBox, DetectionResult, PreprocessingInfo
+from app.schemas.detection import BoundingBox, CandidateInfo, DetectionResult, PreprocessingInfo
 from app.services.image_preprocessing import deskew, prepare_for_ocr
 from app.services.plate_detector import PlateCandidate, PlateDetector
-from app.services.plate_recognizer import OcrOutput, PlateRecognizer, normalize_plate_text
+from app.services.plate_recognizer import MIN_TEXT_CHARS, OcrOutput, PlateRecognizer, normalize_plate_text
 
-MIN_PLATE_CHARS = 4  # shorter strings are treated as OCR noise, not a plate
+MIN_PLATE_CHARS = MIN_TEXT_CHARS  # shorter strings are treated as OCR noise, not a plate
+THUMB_SIDE = 420  # longest side of the crop thumbnails sent with each candidate
+SMALL_W, SMALL_H = 60, 20  # regions smaller than this (original pixels) are flagged 'small'
 MAX_PREVIEW_SIDE = 1600
 
 
@@ -37,6 +39,34 @@ class _Attempt:
         # Blend geometry score with OCR confidence (0.5 if the engine gave none).
         conf = self.ocr.confidence if self.ocr.confidence is not None else 0.5
         return 0.5 * self.candidate.score + 0.5 * conf
+
+
+def _thumb(img: np.ndarray) -> np.ndarray:
+    h, w = img.shape[:2]
+    if max(h, w) <= THUMB_SIDE:
+        return img
+    k = THUMB_SIDE / max(h, w)
+    return cv2.resize(img, (max(1, int(w * k)), max(1, int(h * k))), interpolation=cv2.INTER_AREA)
+
+
+def candidate_info(index: int, a: _Attempt, selected: bool) -> CandidateInfo:
+    c = a.candidate
+    status = "readable" if a.plausible else "small" if (c.width < SMALL_W or c.height < SMALL_H) else "unread"
+    views = a.ocr.views or {}
+    return CandidateInfo(
+        index=index,
+        box=BoundingBox(x=c.x, y=c.y, width=c.width, height=c.height),
+        source=c.source,
+        status=status,
+        text=a.text or None,
+        selected=selected,
+        ocr_engine=a.ocr.engine,
+        svm_score=c.svm_score,
+        characters=len(a.ocr.detail) if a.ocr.detail else None,
+        crop=to_data_url(_thumb(a.crop), ".png"),
+        segmented=to_data_url(_thumb(views["segmented"]), ".png") if "segmented" in views else None,
+        glyphs=to_data_url(views["glyphs"], ".png") if "glyphs" in views else None,
+    )
 
 
 def crop_region(image: np.ndarray, c: PlateCandidate) -> np.ndarray:
@@ -119,7 +149,14 @@ def run_pipeline(
         bounding_box=BoundingBox(x=best.candidate.x, y=best.candidate.y, width=best.candidate.width, height=best.candidate.height),
         detector="user-crop (whole selected area)" if best.candidate.source == "user-crop" else detector.name,
         detector_score=best.candidate.score,
-        ocr_engine=recognizer.name,
+        svm_used=best.candidate.svm_score is not None,
+        svm_score=best.candidate.svm_score,
+        ocr_engine=best.ocr.engine or recognizer.name,
+        ocr_fallback=best.ocr.fallback,
+        ocr_fallback_reason=best.ocr.fallback_reason,
+        ocr_alternative=best.ocr.alternative,
+        candidates=[candidate_info(i + 1, a, a is best) for i, a in enumerate(attempts)],
+        svm_chars=best.ocr.detail or None,
         image_width=width,
         image_height=height,
         processing_time_ms=0.0,

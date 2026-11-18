@@ -8,14 +8,14 @@ function out = fourier_filter(img, type, d1, d2, shape)
 %
 %   The image is padded to avoid wrap-around, transformed, multiplied by a
 %   radial transfer function H(D) and transformed back. 'high' and 'band'
-%   remove the DC term, so those outputs are rescaled with mat2gray for
+%   remove the DC term, so those outputs are rescaled with rescale_unit for
 %   display; 'low' is clipped to the original range.
 if nargin < 2, type = 'low'; end
 if nargin < 3, d1 = 30; end
 if nargin < 4, d2 = 2 * d1; end
 if nargin < 5, shape = 'gaussian'; end
 
-img = im2uint8(img);
+img = to_uint8(img);
 if size(img, 3) == 3
     out = img;
     for c = 1:3
@@ -49,7 +49,7 @@ g = g(1:M, 1:N);
 if strcmpi(type, 'low')
     out = uint8(min(max(g, 0), 255));
 else
-    out = im2uint8(mat2gray(g));
+    out = to_uint8(rescale_unit(g));
 end
 end
 

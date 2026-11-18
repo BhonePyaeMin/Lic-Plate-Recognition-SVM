@@ -1,0 +1,49 @@
+{
+  "model": "HOG (128x32, 8px cells, 9 bins, 2x2 blocks, L2-Hys) + LinearSVC",
+  "trained_on": "synthetic drawn scenes only (no real photographs)",
+  "created": "2026-11-18",
+  "scikit_learn": "1.9.1",
+  "feature_dim": 1620,
+  "C": 0.001,
+  "class_weight": "balanced",
+  "scenes": {
+    "train": 1200,
+    "val": 300,
+    "test": 300
+  },
+  "seeds": {
+    "train_from": 0,
+    "val_from": 100000,
+    "test_from": 200000
+  },
+  "suggested_min_margin": 0.0,
+  "validation": {
+    "samples": 1764,
+    "positives": 576,
+    "accuracy": 0.9898,
+    "precision": 0.9729,
+    "recall": 0.9965,
+    "f1": 0.9846,
+    "roc_auc": 0.9991
+  },
+  "test_candidates": {
+    "samples": 1785,
+    "positives": 576,
+    "accuracy": 0.9866,
+    "precision": 0.9615,
+    "recall": 0.9983,
+    "f1": 0.9796,
+    "roc_auc": 0.9993
+  },
+  "test_end_to_end": {
+    "plate_scenes": 210,
+    "no_plate_scenes": 90,
+    "baseline_top1_hit_rate": 0.6,
+    "svm_top1_hit_rate": 0.6714,
+    "baseline_any_candidate_hit_rate": 0.6952,
+    "svm_any_candidate_hit_rate": 0.6905,
+    "baseline_false_alarm_rate_no_plate": 0.7333,
+    "svm_false_alarm_rate_no_plate": 0.0667
+  },
+  "caveat": "All numbers are on synthetic scenes. Real-photograph accuracy has not been measured."
+}

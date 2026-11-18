@@ -3,5 +3,5 @@ function out = mean_smoothing(img, k)
 if nargin < 2, k = 5; end
 k = max(1, round(k));
 kernel = ones(k) / (k * k);
-out = imfilter(im2uint8(img), kernel, 'replicate');
+out = filter_replicate(to_uint8(img), kernel);
 end

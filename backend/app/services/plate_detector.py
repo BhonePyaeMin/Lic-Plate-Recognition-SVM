@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Optional, Protocol
 
 import cv2
 import numpy as np
@@ -48,6 +48,7 @@ class PlateCandidate:
     height: int
     score: float  # 0..1 heuristic, higher is better. Not a probability.
     source: str  # which pass produced it
+    svm_score: Optional[float] = None  # SVM margin (distance-like, not a probability); None if no SVM ran
 
     def iou(self, other: "PlateCandidate") -> float:
         ix = max(0, min(self.x + self.width, other.x + other.width) - max(self.x, other.x))

@@ -36,11 +36,15 @@ otherwise to OpenCV; a failed MATLAB call falls back to OpenCV and is flagged in
 | `app/api/routes.py` | `/health`, `/api/v1/filters`, `/api/v1/filters/apply`, `/api/v1/detect`; size-limited read; offloads CPU work to a thread pool |
 | `app/services/filters.py` | Operation catalog (ids, parameters, ranges) and OpenCV/NumPy implementations of all course filters |
 | `app/services/processing.py` | Parses and validates `crop`, `steps`, `engine`; applies crop; runs the chain with engine routing and fallback |
-| `app/api/deps.py` | Dependency providers (settings, detector, recognizer, MATLAB); tests override these |
+| `app/api/deps.py` | Dependency providers (settings, detector, recognizer, MATLAB, SVM); tests override these |
 | `app/core/config.py` | Environment-driven settings |
 | `app/core/errors.py` | Typed domain errors mapped to HTTP status and `error_code` |
 | `app/services/image_preprocessing.py` | Validation and decoding, grayscale, denoise, CLAHE, resize, deskew, OCR preparation |
 | `app/services/plate_detector.py` | `PlateDetector` interface and `ContourPlateDetector` baseline |
+| `app/services/svm_plate.py` | HOG features (numpy), `SvmVerifier` (loads `models/plate_svm.npz`) and `SvmPlateDetector`, which wraps any detector and re-ranks or rejects its candidates |
+| `app/services/svm_ocr.py` | Character segmentation, glyph features and `SvmCharRecognizer` (a `PlateRecognizer`); loads `models/ocr_svm.npz` |
+| `scripts/train_svm_ocr.py` | Offline training of the character SVM on synthetic plates |
+| `scripts/train_svm.py`, `scripts/synthetic_scenes.py` | Offline training on synthetic scenes (needs scikit-learn); not used while serving |
 | `app/services/plate_recognizer.py` | `PlateRecognizer` interface, `RapidOcrRecognizer`, text normalisation |
 | `app/services/pipeline.py` | Orchestration, annotation, data-URL encoding |
 | `app/services/matlab_adapter.py` | MATLAB Engine bridge: background start, status, file-based calls to `matlab/api/run_operation_file.m` (real MATLAB call path untested) |
@@ -90,6 +94,10 @@ sequenceDiagram
 11. **OCR** on up to `OCR_CANDIDATES` regions; a result is plausible with at least 4 alphanumeric characters. The best plausible one is chosen by `0.5 * region score + 0.5 * OCR confidence` (0.5 if the engine gives none).
 12. **Normalisation**: upper case, keep A-Z and 0-9 only. No character substitution. Raw OCR text is returned separately.
 13. **Annotation**: box (and label when readable) drawn on a copy; preview capped at 1600 px.
+
+SVM stage (optional): `/detect` accepts `detector_mode` = `auto` | `contour` | `svm`. When a model is loaded, `SvmPlateDetector` crops each proposed candidate, computes a 1620-value HOG descriptor of the 128x32 resized crop and takes the linear SVM margin `w.((x - mean)/scale) + b`. The candidate score becomes `0.4 * heuristic + 0.6 * sigmoid(2 * margin)`; in `svm` mode candidates with a margin below the model's stored threshold are also dropped. The margin is returned as `svm_score` and is not a probability. The model is trained only on synthetic scenes (`models/plate_svm.json` records the data and held-out synthetic metrics), so its real-photograph accuracy is unknown.
+
+OCR engine choice: `/detect` also accepts `ocr_engine` = `auto` (default) | `rapidocr` | `svm`. `auto` wraps the two engines in `FallbackRecognizer`: the SVM reads first and its text is the answer, RapidOCR reads the same plate as a cross-check (`ocr_alternative`, shown as agree/differs), and RapidOCR replaces the SVM only if the SVM yields fewer than 4 letters or digits (`fallback=true`). The character SVM is an RBF kernel approximated by random Fourier features plus a linear SVM. Every detection returns `candidates` (one `CandidateInfo` per plate read) so the UI can show each region, its status and, for the SVM engine, the segmented plate and glyph strip. The SVM engine segments the prepared plate image into glyphs and classifies each with a 36-class linear SVM; it reports no confidence (margins are not probabilities) and returns per-character margins as `svm_chars`. It is trained only on synthetic plates; `models/ocr_svm.json` records the data and held-out synthetic metrics.
 
 Replacing the detector: implement `name` and `detect(image) -> list[PlateCandidate]` (ranked, original-image coordinates) and return it from `get_detector()` in `app/api/deps.py`. No model file is shipped and no pretrained detector is used or claimed.
 

@@ -4,8 +4,9 @@ function [bw, mag] = edge_detect(img, method, thresholdFraction)
 %
 %   Sobel and Prewitt are implemented here with explicit 3x3 kernels: the
 %   gradient magnitude sqrt(Gx^2 + Gy^2) is thresholded at
-%   thresholdFraction * max(magnitude) (default 0.25). Canny uses the toolbox
-%   edge() function (Gaussian smoothing, non-maximum suppression, hysteresis).
+%   thresholdFraction * max(magnitude) (default 0.25). Canny uses
+%   common/canny_edges.m (Gaussian smoothing, non-maximum suppression,
+%   hysteresis), a base-MATLAB implementation, so no toolbox is needed.
 %   MAG is the normalised gradient magnitude (empty for Canny).
 if nargin < 2, method = 'sobel'; end
 if nargin < 3, thresholdFraction = 0.25; end
@@ -18,9 +19,9 @@ switch lower(method)
         gx = [-1 0 1; -1 0 1; -1 0 1];
     case 'canny'
         if numel(thresholdFraction) == 2     % [low high] hysteresis thresholds, 0..1
-            bw = edge(gray, 'canny', thresholdFraction);
+            bw = canny_edges(gray, thresholdFraction);
         else
-            bw = edge(gray, 'canny');
+            bw = canny_edges(gray);
         end
         mag = [];
         return
@@ -28,8 +29,8 @@ switch lower(method)
         error('edge_detect:method', 'Unknown method "%s".', method);
 end
 gy = gx';
-Gx = imfilter(gray, gx, 'replicate');
-Gy = imfilter(gray, gy, 'replicate');
+Gx = filter_replicate(gray, gx);
+Gy = filter_replicate(gray, gy);
 mag = sqrt(Gx .^ 2 + Gy .^ 2);
 if max(mag(:)) > 0, mag = mag / max(mag(:)); end
 bw = mag >= thresholdFraction;
